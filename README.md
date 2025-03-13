@@ -97,6 +97,3 @@ Once running, the chatbot will prompt for user input. Example interactions:
 
 This project contains API keys in the source code that should be moved to environment variables or a secure secret management system before production use.
 
-## License
-
-[Include license information here]
