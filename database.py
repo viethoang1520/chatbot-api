@@ -1,5 +1,5 @@
 import psycopg2
-
+import os
 # Global connection
 conn = None
 
@@ -7,11 +7,11 @@ conn = None
 def get_postgres_connection():
     try:
         conn = psycopg2.connect(
-            dbname="ClaimRequest",
-            user="postgres",
-            password="12345",
-            host="14.225.253.6",  
-            port="5432"   
+            dbname=os.getenv("POSTGRES_DB"),
+            user=os.getenv("POSTGRES_USER"),
+            password=os.getenv("POSTGRES_PASSWORD"),
+            host=os.getenv("POSTGRES_HOST"),  
+            port=os.getenv("POSTGRES_PORT")   
         )
         return conn
     except Exception as e:
