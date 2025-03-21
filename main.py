@@ -20,40 +20,29 @@ client = Swarm()
 
 database.get_postgres_connection()
 
-def create_claim(user_id, project_id, days_worked, hours_worked_per_day):
-  """Create a claim for a user based on the user_id, project_id, days_worked, and hours_worked_per_day
-  Takes as input arguments in the format '{"user_id":"1","project_id":"2","days_worked":"3","hours_worked_per_day":"4"}'
-  """
-  total_working_hours = float(days_worked) * float(hours_worked_per_day)
-  claim_id = str(uuid.uuid4())
-  conn = database.get_postgres_connection()
-  cursor = conn.cursor()
-  cursor.execute('INSERT INTO claims (claim_id, user_id, project_id, submitted_date, total_working_hours, claim_status) VALUES (%s, %s, %s, %s, %s, %s)',
-                 (claim_id, user_id, project_id, datetime.datetime.now(), total_working_hours, "PENDING"))
-  conn.commit()
-  cursor.close()
-  conn.close()
-  return "Claim created successfully"
 # sdk
-def get_user_claim(user_id):
-  """Return claim information for a user based on the user_id 
-  Takes as input arguments in the format '{"user_id":"1"}'
+
+# TESTED
+def get_user_claims(context_variables):
+  """Return claim information for a user based on the user_id in the context variables
   """
+  user_id = context_variables["user_id"]
   conn = database.get_postgres_connection()
   cursor = conn.cursor()
   cursor.execute('SELECT * FROM claims WHERE user_id = %s;', (user_id,))
   result = cursor.fetchall()
+  context_variables["user_claims"] = result
   cursor.close()
   conn.close()
   return result
     
-def get_claim_details(claim_id):
-  """return claim details for a claim based on the claim_id 
-  Takes as input arguments in the format '{"claim_id":"1"}'
+
+def get_claim_details(request_id):
+  """ Return claim details for a claim based on the request_id
   """
   conn = database.get_postgres_connection()
   cursor = conn.cursor()
-  cursor.execute('SELECT * FROM claims WHERE claim_id = %s;', (claim_id,))
+  cursor.execute('SELECT * FROM claim_details WHERE request_id = %s;', (request_id,))
   result = cursor.fetchone()
   cursor.close()
   conn.close()
@@ -62,11 +51,12 @@ def get_claim_details(claim_id):
 claims_agent = Agent(
     name="Claim Agent",
     description="""You are a claim agent that handles all actions related to claims.
-    If the user want to get a claim details, ask user clarifying questions until you know whether or not it is a get claim by user_id or get claim by claim_id request. 
+    If the user want to get their claim details, ask user clarifying questions until you know which claim's name they want to get details for,
+    get the request_id by fetching the context_variables["user_claims"] and then call the appropriate function.
     Once you know, call the appropriate transfer function. Either ask clarifying questions, or call one of your functions, every time.
-    You must ask for the projectID, days worked, hours worked per day, and userID (get from the browser) to create a claim in one message.
-    If the user asks you to email them, you must ask them for email address in one message.""",
-    functions=[create_claim, get_user_claim, get_claim_details],
+    """,
+    # If the user asks you to email them, you must ask them for email address in one message.
+    functions=[get_user_claims, get_claim_details],
 )
 
 triage_agent = Agent(
@@ -93,11 +83,15 @@ claims_agent.functions.append(transfer_back_to_triage)
 def chat_stream():
     data = request.get_json()
     user_input = data.get("message")
+    user_id = data.get("user_id")
+    role_id = data.get("role_id")
+    context_variables = {"user_id": user_id, "role_id": role_id}
 
     response = client.run(
         agent=triage_agent,
         messages=[{"role": "user", "content": user_input}],
-        stream=False
+        stream=False,
+        context_variables=context_variables
     )
     
     # Get only the last assistant message
