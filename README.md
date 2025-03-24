@@ -85,6 +85,15 @@ The system uses the following database tables:
    docker run -p 5000:5000 claims-chatbot
    ```
 
+### The second way
+1. Activate virtual environment
+   ```
+   venv\Scripts\activate
+   ```
+2. Run the program
+   ```
+   python main.py
+   ```
 ## Usage
 
 Once running, the chatbot will prompt for user input. Example interactions:

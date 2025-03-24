@@ -24,12 +24,19 @@ database.get_postgres_connection()
 
 # TESTED
 def get_user_claims(context_variables):
-  """Return claim information for a user based on the user_id in the context variables
+  """Return claim information for a user based on the user_id in the context variables.
+  Please format the response as:
+  Request ID:...
+  Duration: start_date - end_date (keep the "-")
+  Total hours:...
+  Project ID:...
+  Submitted date:... 
+  Status:...
   """
   user_id = context_variables["user_id"]
   conn = database.get_postgres_connection()
   cursor = conn.cursor()
-  cursor.execute('SELECT * FROM claims WHERE user_id = %s;', (user_id,))
+  cursor.execute('SELECT request_id, start_date, end_date, total_hours, project_id, submitted_date, claim_status FROM claims WHERE user_id = %s;', (user_id,))
   result = cursor.fetchall()
   context_variables["user_claims"] = result
   cursor.close()
@@ -38,12 +45,15 @@ def get_user_claims(context_variables):
     
 
 def get_claim_details(request_id):
-  """ Return claim details for a claim based on the request_id
+  """ Return claim details for a claim based on the request_id, format the response as:
+      Claim ID:...
+      Date: ...
+      Working hours: ...
   """
   conn = database.get_postgres_connection()
   cursor = conn.cursor()
-  cursor.execute('SELECT * FROM claim_details WHERE request_id = %s;', (request_id,))
-  result = cursor.fetchone()
+  cursor.execute('SELECT claim_id, date, working_hours FROM claim_details WHERE request_id = %s AND status = %s;', (request_id, 1))
+  result = cursor.fetchall()
   cursor.close()
   conn.close()
   return result
@@ -51,7 +61,7 @@ def get_claim_details(request_id):
 claims_agent = Agent(
     name="Claim Agent",
     description="""You are a claim agent that handles all actions related to claims.
-    If the user want to get their claim details, ask user clarifying questions until you know which claim's name they want to get details for,
+    If the user want to get their claim details, ask user clarifying questions until you know which claim id they want to get details for,
     get the request_id by fetching the context_variables["user_claims"] and then call the appropriate function.
     Once you know, call the appropriate transfer function. Either ask clarifying questions, or call one of your functions, every time.
     """,
@@ -63,11 +73,11 @@ triage_agent = Agent(
     name="Triage Agent",
     instructions="""You are to triage a users request, and call a tool to transfer to the right intent.
     Once you are ready to transfer to the right intent, call the tool to transfer to the right intent.
-    You dont need to know specifics, just the topic of the request.
-    If the user request is about a claim, transfer to the Claim Agent.
     When you need more information to triage the request to an agent, ask a direct question without explaining why you're asking it.
     *Remember: Do not share your thought process with the user! Do not make unreasonable assumptions on behalf of user.""",
 )
+    # You dont need to know specifics, just the topic of the request.
+    # If the user request is about a claim, transfer to the Claim Agent.
 
 def transfer_to_claim():
     return claims_agent
