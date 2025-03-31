@@ -20,7 +20,6 @@ client = Swarm()
 
 database.get_postgres_connection()
 
-# sdk
 
 # TESTED
 def get_user_claims(context_variables):
